@@ -1,6 +1,6 @@
 from pathlib import Path
 import json
-from config_validator import config_validator
+from .config_validator import config_validator
 
 #self.config存放的是config檔讀取後用python的dict形式儲存的資料
 class Config:
@@ -13,7 +13,8 @@ class Config:
         self.load_json()
     def load_json(self):
         with open(self.config_path , mode = "r" , encoding="utf-8") as f:
-            self.config = json.load(f)
+            self.config = json.load(f)    
         if not isinstance(self.config,dict):
             raise TypeError("config的格式錯誤，最外層資料應為dict")
-        self.config_validator = config_validator(self.config)
+
+        self.config_validator = config_validator(self.config,self.config_path.parent)
