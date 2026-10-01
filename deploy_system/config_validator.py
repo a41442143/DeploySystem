@@ -41,9 +41,9 @@ class config_validator:
     #path欄位內存放的應為網站的專案路徑，故檢查該資料夾是否存在及是否為資料夾
     def validate_path(self,config_parent_path):
         temp_project_path = Path(self.config["path"])
+        if not isinstance(self.config["path"] , str):
+            raise TypeError("該欄位應為str")
         if not temp_project_path.is_absolute():
-            if not isinstance(self.config["path"] , str):
-                raise TypeError("該欄位應為str")
             base_dir = Path(config_parent_path)
             rel_path = Path(self.config["path"])
             self.config["path"] = (base_dir/rel_path).resolve()
