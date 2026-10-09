@@ -46,4 +46,12 @@
 請檢查app.py有正確傳入config資料夾路徑
 
 ## 5. 異常狀況處理規則
-    
+    1. docker service:
+        docker service中會先做紀錄檔比對，比對後會回傳結果
+        回傳結果1: 找不到同名容器
+        回傳結果2: 非本系統管理之容器不做操作
+        回傳結果10:系統出現錯誤，同名同ID卻不同port/label/project_path
+
+
+
+container_comparator太麻煩所以是直接用AI製作的

@@ -1,7 +1,11 @@
 import argparse
+from .service.docker import docker_services
 import sys
+from process_runner import process_runner 
 class cli_parser:
     def __init__(self):
+        self.docker_sevice = docker_services()
+        self.process_runner = process_runner()
         self.parser = self.build_parser()
     def build_parser(self) ->argparse.ArgumentParser:
         system_parser = argparse.ArgumentParser(
