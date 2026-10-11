@@ -35,7 +35,7 @@ class RecordStore:
             self.save(record)
 
     def update_fields(self, name: str, updates: dict , id =None) -> None:
-        allowed_fields = {"id", "label", "status", "port", "project_path"}
+        allowed_fields = {"id", "label", "status", "port", "project_path", "type", "container_port"}
         invalid_fields = set(updates) - allowed_fields
         if invalid_fields:
             raise ValueError(f"不允許更新的欄位：{sorted(invalid_fields)}")

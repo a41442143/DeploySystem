@@ -7,6 +7,7 @@ class config_validator:
         self.validate_path(config_parent_path)
         self.validate_port()
         self.validate_type()
+        self.validate_container_port()
         self.validate_time_out()
     def validate(self):
         if not self.config:
@@ -36,6 +37,13 @@ class config_validator:
             raise TypeError("該欄位應為str")
         if self.config["type"] not in valid_type:
             raise ValueError("invalid type,please check your config")
+
+    def validate_container_port(self):
+        if self.config["type"] != "flask":
+            return
+        container_port = self.config.setdefault("container_port", 8000)
+        if type(container_port) is not int or not 1 <= container_port <= 65535:
+            raise ValueError("container_port 應為 1 到 65535 的整數")
     
     
     #path欄位內存放的應為網站的專案路徑，故檢查該資料夾是否存在及是否為資料夾
@@ -67,4 +75,3 @@ class config_validator:
                 if not isinstance(self.config["time_out"] , int):
                     self.config["time_out"] = 500
                     print("time_out不符合格是規範已經將其設為預設值")
-                

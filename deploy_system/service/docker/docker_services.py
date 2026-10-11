@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 import json
 from ...process_runner import process_runner
 from .record_store import RecordStore
@@ -43,6 +44,23 @@ class docker_services:
                     self.check_dir(FORBID_LIST,child_target)
                 elif child_target.name ==".env":
                     raise ValueError(f'這是高敏檔案，上傳的專案內不該包含此檔案，路徑為{child_target}')
+
+    def docker_build(self):
+        if self.type != "flask":
+            raise ValueError("docker_build 目前只支援 Flask 專案")
+        self.check_project_dir()
+        dockerfile = self.project_path / "Dockerfile"
+        if not dockerfile.is_file():
+            raise ValueError("找不到 Dockerfile，請先完成預設 Dockerfile 的補檔處理")
+
+        identity = f"{self.config['name']}|{self.project_path.resolve()}"
+        suffix = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:12]
+        image_tag = f"deploysystem-flask-{suffix}:latest"
+        self.dockerClient._run([
+            "docker", "build", "--tag", image_tag,
+            "--file", str(dockerfile), str(self.project_path),
+        ])
+        return image_tag
 
 
     def docker_run(self,name,port,label=None):
@@ -200,7 +218,8 @@ class docker_services:
             
     #將inspect出來的容器資料轉成dict並回傳
     def handle_detail(self,detail):
-        actual = self.comparator.extract_actual(detail)
+        container_port = self.config.get("container_port", 8000) if self.type == "flask" else 80
+        actual = self.comparator.extract_actual(detail, self.type, container_port)
         if actual["label"] != "DeploySystem":
             raise ValueError("非本系統管理的容器，不可更新紀錄")
         if (
@@ -210,10 +229,14 @@ class docker_services:
             or actual["project_path"] is None
         ):
             raise ValueError("容器資訊不完整，不可更新紀錄")
-        return {
+        record = {
             key: actual[key]
             for key in ("id", "label", "status", "port", "project_path")
         }
+        record["type"] = self.type
+        if self.type == "flask":
+            record["container_port"] = container_port
+        return record
 
     def docker_status(self):
         info = self.dockerClient.ps_all()
