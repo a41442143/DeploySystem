@@ -233,9 +233,11 @@ class docker_services:
             if record[container_name]["status"] == "exited" or record[container_name]["status"] == "created":
                 args = ["docker", "start", container_id]
                 self.dockerClient._run(args)
+                print(f"容器 {container_name} 已啟動")
                 return None
             else:
                 return "this container is running "
+        print(f"找不到可操作的受管理容器：{container_name}")
             
     def docker_stop(self,container_name):
         if self.check_before_use_docker(container_name):
@@ -255,10 +257,14 @@ class docker_services:
             args = ["docker", "logs", "--tail", "100", "--timestamps", container_id]
             try:
                 result = self.dockerClient._run(args)
-                print(result)
+                if result.strip():
+                    print(result)
+                else:
+                    print(f"容器 {container_name} 沒有可顯示的標準輸出日誌")
                 return None
             except Exception as e:
                 return f"Error happen when execute command , Error : {str(e)}"
+        print(f"找不到可操作的受管理容器：{container_name}")
 
 
 
