@@ -44,9 +44,14 @@ class ContainerComparator:
         actual = self.extract_actual(detail)
         differences = []
 
-        if actual["name"] != name or record.get("name") != name:
+        name_matches = actual["name"] == name and record.get("name") == name
+        id_matches = actual["id"] is not None and actual["id"] == record.get("id")
+        if not name_matches and not id_matches:
+            raise ValueError("容器名稱與 ID 均不符，無法視為同一容器")
+
+        if not name_matches:
             differences.append("name")
-        if actual["id"] != record.get("id"):
+        if not id_matches:
             differences.append("id")
         if record.get("label") != "DeploySystem" or actual["label"] != "DeploySystem":
             differences.append("label")

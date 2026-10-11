@@ -44,9 +44,14 @@ class RecordStore:
                         records[name] = records[Name]
                         records[name]["name"] = name
                         del records[Name]
-                        self.save(records)
                     break
         records[name].update(updates)
         self.save(records)
             
-            
+    def delete_record(self,name):
+        records = self.load()
+        if name in records:
+            del records[name]
+            self.save(records)
+        else:
+            raise ValueError("this name is unknown")
