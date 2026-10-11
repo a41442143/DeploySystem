@@ -38,7 +38,7 @@ def main(argv=None) -> int:
 
     try:
         config = Config(args.config_path).config
-        parser.set_project_path(config["path"])
+        parser.set_project_path(config)
         service = parser.docker_sevice
 
         if args.command == "deploy":

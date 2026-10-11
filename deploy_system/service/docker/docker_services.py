@@ -3,9 +3,13 @@ import json
 from ...process_runner import process_runner
 from .record_store import RecordStore
 from .container_comparator import ContainerComparator
-
+from ...config import Config
 class docker_services:
-    def __init__(self,process_runner:process_runner,project_path = None):
+
+    def __init__(self,process_runner:process_runner,config):
+        self.config = config
+        project_path = config["path"]
+        self.type = config["type"]
         self.project_path = project_path
         self.process_runner = process_runner
         self.client = DockerClient(self.process_runner)
@@ -13,20 +17,23 @@ class docker_services:
         self.comparator = ContainerComparator()
         self.dockerClient = DockerClient(self.process_runner)
     def check_project_dir(self):
+        type = self.type
         if not self.project_path.is_dir():
             raise TypeError("project path should be the path of the project you want to employ")
-        FORBID_LIST = [".env",".git",".vscode"]
-        for target in self.project_path.iterdir():
-            if target.name == FORBID_LIST[0]:
-                raise ValueError(f'這是高敏檔案，上傳的專案內不該包含此資料夾，路徑為{target}')
-            if target.is_dir():
-                self.check_dir(FORBID_LIST , target)
-        if not Path(self.project_path/"index.html").exists():
-            raise ValueError("根目錄底下應該要包含Index.html")
+        if type == "html":
+            FORBID_LIST = [".env",".git",".vscode"]
+            for target in self.project_path.iterdir():
+                if target.name == FORBID_LIST[0]:
+                    raise ValueError(f'這是高敏檔案，上傳的專案內不該包含此資料夾，路徑為{target}')
+                if target.is_dir():
+                    self.check_dir(FORBID_LIST , target)
+            if not Path(self.project_path/"index.html").exists():
+                raise ValueError("根目錄底下應該要包含Index.html")
+            else:
+                if Path(self.project_path/"index.html").is_dir():
+                    raise TypeError("index.hmtl應為檔案而非資料夾")
         else:
-            if Path(self.project_path/"index.html").is_dir():
-                raise TypeError("index.hmtl應為檔案而非資料夾")
-            
+            required = ["app.py","requirements.txt","Dockerfile",".dockerignore"]
     def check_dir(self,FORBID_LIST,target:Path):
         if target.name in FORBID_LIST:
             raise ValueError(f'這是高敏資料夾，上傳的專案內不該包含此資料夾，路徑為{target}')
@@ -42,28 +49,42 @@ class docker_services:
         report = self.check_record()
         if name in report.keys():
             print(f'容器資訊檢查完畢，你要部屬的容器當前狀態為:{report[name]}')
+            if isinstance(report[name],dict):
+                print("該容器已存在，所以改為使用start指令")
+                result = self.docker_start(name)
+                if result is None:
+                    return "該容器已存在並且已經執行start指令且執行成功，可直接使用該name操作容器"
+                return result
+            else:
+                print(f"容器紀錄檢查未通過，無法啟動：{report[name]}")
+                return None
         else:
             print("report中尚不存在該容器，即將建立並部屬該容器")
-            
-        try:
-            self.check_project_dir()
-        except Exception as e:
-            print(f'處理過程出現錯誤，執行失敗: {e}')
-            return None
-        else:
-            args = ["docker", "run", "-d", "--name",name,
-                    "--label", "deploysystem.owner=DeploySystem",
-                    "--publish", f"127.0.0.1:{port}:80",
-                    "--mount",
-                    f"type=bind,source={self.project_path.resolve()},target=/usr/share/nginx/html,readonly",
-                    "nginx:alpine"
-                    ]
+        if self.type == "html":
             try:
-                result = self.dockerClient._run(args)
+                self.check_project_dir()
             except Exception as e:
-                print(e)
+                print(f'處理過程出現錯誤，執行失敗: {e}')
                 return None
-            return result
+            else:
+                args = ["docker", "run", "-d", "--name",name,
+                        "--label", "deploysystem.owner=DeploySystem",
+                        "--publish", f"127.0.0.1:{port}:80",
+                        "--mount",
+                        f"type=bind,source={self.project_path.resolve()},target=/usr/share/nginx/html,readonly",
+                        "nginx:alpine"
+                        ]
+                try:
+                    result = self.dockerClient._run(args)
+                except Exception as e:
+                    print(e)
+                    return None
+                detail = self.dockerClient.inspect(result.strip())
+                update_data = self.handle_detail(detail)
+                self.record_store.add_fields(name,update_data)
+                return result
+        else:
+            pass
 
         
     def check_record(self) -> dict[str, object]:
@@ -223,9 +244,7 @@ class docker_services:
             args = ["docker", "stop", "--timeout", "15", container_id]
             try:
                 result = self.dockerClient._run(args)
-                print("執行結果如下:")
-                for key,value in result:
-                    print(f'{key} : {value}')
+                print(f"停止指令執行結果如下{result}")
                 return None
             except Exception as e:
                 return f"Error happen when execute command , Error : {str(e)}"
@@ -286,4 +305,3 @@ class DockerClient:
             raise ValueError("inspect 回傳的容器 ID 與查詢目標不同")
 
         return detail
-

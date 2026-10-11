@@ -27,6 +27,12 @@ class RecordStore:
         except Exception as e:
             print(f'寫入檔案發生錯誤:{e}，請重新嘗試')
 
+    def add_fields(self,name,updates):
+        record = self.load()
+        if name not in record.keys():
+            updates["name"] = name
+            record[name] = updates
+            self.save(record)
 
     def update_fields(self, name: str, updates: dict , id =None) -> None:
         allowed_fields = {"id", "label", "status", "port", "project_path"}
