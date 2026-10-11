@@ -250,6 +250,34 @@ class docker_services:
                 return None
             except Exception as e:
                 return f"Error happen when execute command , Error : {str(e)}"
+
+    def docker_remove(self,container_name):
+        if not self.check_before_use_docker(container_name):
+            return f"找不到可刪除的受管理容器：{container_name}"
+
+        record = self.record_store.load()
+        container_id = record[container_name]["id"]
+        try:
+            detail = self.dockerClient.inspect(container_id)
+            actual = self.comparator.extract_actual(detail)
+            if actual["id"] != container_id or actual["label"] != "DeploySystem":
+                return "容器 ID 或管理標籤不符，停止刪除"
+            if detail["State"]["Status"] not in {"created", "exited"}:
+                return f"容器 {container_name} 尚未停止，請先執行 stop"
+            self.dockerClient._run(["docker", "rm", container_id])
+        except (OSError, ValueError, TypeError, RuntimeError, KeyError) as error:
+            return f"刪除容器失敗：{error}"
+
+        try:
+            self.record_store.delete_record(container_name)
+            if container_name in self.record_store.load():
+                raise RuntimeError("紀錄仍存在")
+        except (OSError, ValueError, TypeError, RuntimeError, KeyError) as error:
+            return f"容器已刪除，但系統紀錄清除失敗：{error}"
+
+        print(f"容器 {container_name} 與系統紀錄已刪除")
+        return None
+
     def docker_logs(self,container_name):
         if self.check_before_use_docker(container_name):
             record = self.record_store.load()

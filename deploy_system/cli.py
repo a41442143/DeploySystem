@@ -18,7 +18,7 @@ class cli_parser:
         common = argparse.ArgumentParser(add_help=False)
         common.add_argument("config_path", type=Path, help="專案設定檔路徑")
 
-        for command in ("deploy", "test", "logs", "stop", "status", "start"):
+        for command in ("deploy", "test", "logs", "stop", "remove", "status", "start"):
             self.subparsers.add_parser(command, parents=[common])
 
 
@@ -55,6 +55,11 @@ def main(argv=None) -> int:
                 print(result)
         elif args.command == "stop":
             result = service.docker_stop(config["name"])
+            if isinstance(result, str):
+                print(result)
+                return 1
+        elif args.command == "remove":
+            result = service.docker_remove(config["name"])
             if isinstance(result, str):
                 print(result)
                 return 1
