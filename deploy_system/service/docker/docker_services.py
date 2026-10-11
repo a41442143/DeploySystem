@@ -43,7 +43,7 @@ class docker_services:
         if name in report.keys():
             print(f'容器資訊檢查完畢，你要部屬的容器當前狀態為:{report[name]}')
         else:
-            print("report中尚不存在該容器")
+            print("report中尚不存在該容器，即將建立並部屬該容器")
             
         try:
             self.check_project_dir()
