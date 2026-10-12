@@ -5,6 +5,7 @@ from .process_runner import process_runner
 from pathlib import Path
 from .config import Config
 from .service.http_status_validator import http_validator
+import time
 class cli_parser:
     def __init__(self):
         self.parser = self.build_parser()
@@ -49,7 +50,9 @@ def main(argv=None) -> int:
             if not container_id:
                 print("部署失敗")
                 return 1
+            result = parser.test(config["type"])
             print(f"部署操作完成：{container_id.strip()}")
+            return result
         elif args.command == "status":
             service.docker_status()  # 服務函式目前已自行輸出清單。
         elif args.command == "start":
