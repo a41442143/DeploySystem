@@ -93,9 +93,10 @@ class docker_services:
             if isinstance(report[name],dict):
                 print("該容器已存在，所以改為使用start指令")
                 result = self.docker_start(name)
-                if result is None:
-                    return "該容器已存在並且已經執行start指令且執行成功，可直接使用該name操作容器"
-                return result
+                if result is not None:
+                    print(f"啟動既有容器失敗：{result}")
+                    return None
+                return "該容器已存在，啟動檢查完成，可直接使用該名稱操作容器"
             else:
                 print(f"容器紀錄檢查未通過，無法啟動：{report[name]}")
                 return None
@@ -299,9 +300,11 @@ class docker_services:
                 self.dockerClient._run(args)
                 print(f"容器 {container_name} 已啟動")
                 return None
-            else:
-                return "this container is running "
-        print(f"找不到可操作的受管理容器：{container_name}")
+            if record[container_name]["status"] == "running":
+                print(f"容器 {container_name} 已在執行中")
+                return None
+            return f"容器 {container_name} 目前狀態為 {record[container_name]['status']}，無法直接啟動"
+        return f"找不到可操作的受管理容器：{container_name}"
             
     def docker_stop(self,container_name):
         if self.check_before_use_docker(container_name):
@@ -314,6 +317,7 @@ class docker_services:
                 return None
             except Exception as e:
                 return f"Error happen when execute command , Error : {str(e)}"
+        return f"找不到可操作的受管理容器：{container_name}"
 
     def docker_remove(self,container_name):
         if not self.check_before_use_docker(container_name):
@@ -356,7 +360,7 @@ class docker_services:
                 return None
             except Exception as e:
                 return f"Error happen when execute command , Error : {str(e)}"
-        print(f"找不到可操作的受管理容器：{container_name}")
+        return f"找不到可操作的受管理容器：{container_name}"
 
 
 

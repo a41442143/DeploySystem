@@ -4,12 +4,15 @@ import sys
 from .process_runner import process_runner 
 from pathlib import Path
 from .config import Config
+from .service.http_status_validator import http_validator
 class cli_parser:
     def __init__(self):
         self.parser = self.build_parser()
-    def set_project_path(self,project_path):
+
+    def set_config(self,config):
         self.process_runner = process_runner()
-        self.docker_sevice = docker_services(self.process_runner,project_path)
+        self.http_validator = http_validator(config)
+        self.docker_sevice = docker_services(self.process_runner,config)
     def build_parser(self) ->argparse.ArgumentParser:
         system_parser = argparse.ArgumentParser(description="DeploySystem: 本機自動化部署與驗證工具，以下為說明")
         
@@ -27,32 +30,33 @@ class cli_parser:
         return system_parser
     def parse(self,argv=None):
         return self.parser.parse_args(argv)
+
+    def test(self, project_type):
+        result = self.http_validator.check_status(project_type)
+        return result
     
 def main(argv=None) -> int:
     parser = cli_parser()
     args = parser.parse(argv)
-
-    if args.command == "test":
-        print("HTTP 驗證尚未實作，test 指令暫時無法使用")
-        return 2
-
     try:
         config = Config(args.config_path).config
-        parser.set_project_path(config)
+        parser.set_config(config)
         service = parser.docker_sevice
-
+        if args.command == "test":
+            return parser.test(config["type"])
         if args.command == "deploy":
             container_id = service.docker_run(config["name"], config["port"])
             if not container_id:
                 print("部署失敗")
                 return 1
-            print(f"Docker 已建立容器：{container_id.strip()}")
+            print(f"部署操作完成：{container_id.strip()}")
         elif args.command == "status":
             service.docker_status()  # 服務函式目前已自行輸出清單。
         elif args.command == "start":
             result = service.docker_start(config["name"])
-            if result is not None:
+            if isinstance(result, str):
                 print(result)
+                return 1
         elif args.command == "stop":
             result = service.docker_stop(config["name"])
             if isinstance(result, str):
