@@ -55,3 +55,15 @@
 
 
 container_comparator太麻煩所以是直接用AI製作的
+
+## Flask 專案的 Dockerfile 規格
+
+Flask 專案使用者提供 app.py、requirements.txt 與 .dockerignore
+預設容器使用 Python 3.12，建置時安裝 requirements.txt，啟動時執行 app.py。JSON 
+設定檔的 port 是主機連接埠，container_port 是 Flask 在容器內監聽的連接埠（未填時預設為 8000
+使用者的程式需在容器內監聽 0.0.0.0 與設定的 container_port。
+
+系統會先檢查 app.py、requirements.txt 與 .dockerignore。
+若只缺少Dockerfile，便自動建立使用 Python 3.12 的預設檔案；若使用者已提供Dockerfile，系統會保留並使用該檔案建置。
+
+設定檔的內容若與 Python 程式的實際設定不一致（例如監聽位址或連接埠不同），目前不在系統自動修正範圍內，需由使用者自行調整。

@@ -34,7 +34,30 @@ class docker_services:
                 if Path(self.project_path/"index.html").is_dir():
                     raise TypeError("index.hmtl應為檔案而非資料夾")
         else:
-            required = ["app.py","requirements.txt","Dockerfile",".dockerignore"]
+            required = ("app.py", "requirements.txt", ".dockerignore")
+            for filename in required:
+                if not (self.project_path / filename).is_file():
+                    raise ValueError(f"Flask 專案缺少必要檔案：{filename}")
+
+            dockerfile = self.project_path / "Dockerfile"
+            #check檔案是否存在，之後根據情況決定是否預設建立docekr file
+            if dockerfile.exists():
+                if not dockerfile.is_file():
+                    raise ValueError("Dockerfile 必須是檔案")
+            else:
+                container_port = self.config.get("container_port", 8000)
+                content = (
+                    "FROM python:3.12-slim\n"
+                    "WORKDIR /app\n"
+                    "COPY requirements.txt .\n"
+                    "RUN pip install --no-cache-dir -r requirements.txt\n"
+                    "COPY . .\n"
+                    f"EXPOSE {container_port}\n"
+                    'CMD ["python", "app.py"]\n'
+                )
+                with dockerfile.open("x", encoding="utf-8") as file:
+                    file.write(content)
+                print(f"已建立預設 Dockerfile：{dockerfile}")
     def check_dir(self,FORBID_LIST,target:Path):
         if target.name in FORBID_LIST:
             raise ValueError(f'這是高敏資料夾，上傳的專案內不該包含此資料夾，路徑為{target}')
@@ -101,8 +124,26 @@ class docker_services:
                 update_data = self.handle_detail(detail)
                 self.record_store.add_fields(name,update_data)
                 return result
-        else:
-            pass
+        elif self.type == "flask":
+            try:
+                image_tag = self.docker_build()
+                container_port = self.config.get("container_port", 8000)
+                args = [
+                    "docker", "run", "-d", "--name", name,
+                    "--label", "deploysystem.owner=DeploySystem",
+                    "--label", f"deploysystem.project_path={self.project_path.resolve()}",
+                    "--publish", f"127.0.0.1:{port}:{container_port}",
+                    image_tag,
+                ]
+                result = self.dockerClient._run(args)
+            except Exception as error:
+                print(f"Flask 容器建置或啟動失敗：{error}")
+                return None
+
+            detail = self.dockerClient.inspect(result.strip())
+            update_data = self.handle_detail(detail)
+            self.record_store.add_fields(name, update_data)
+            return result
 
         
     def check_record(self) -> dict[str, object]:
@@ -325,7 +366,8 @@ class DockerClient:
 
     #執行docker指令
     def _run(self, args: list[str]) -> str:
-        result = self.runner.run(args, timeout=30)
+        timeout = 600 if args[:2] == ["docker", "build"] else 30
+        result = self.runner.run(args, timeout=timeout)
         #運行docker指令順便做基礎檢查
         if result.result != 0:
             if result.result is None :
