@@ -9,3 +9,4 @@ config_example/
 examples/
 deploy_system/service/docker/server_record.json
 discord_bot.json
+dc/.env
