@@ -1,0 +1,11 @@
+PROJECT_GUIDE.md
+.gitignore
+.vscode/
+project_config/
+__pycache__/
+app_data/
+tests/
+config_example/
+examples/
+deploy_system/service/docker/server_record.json
+discord_bot.json
