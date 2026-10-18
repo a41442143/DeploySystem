@@ -75,7 +75,19 @@ class ContainerComparator:
             differences.append("label")
         if record.get("status") != actual["status"]:
             differences.append("status")
-        if actual["port"] is None or str(actual["port"]) != str(record.get("port")):
+        port_key = f"{80 if record.get('type', 'html') == 'html' else record.get('container_port', 8000)}/tcp"
+        bindings = ((detail.get("HostConfig") or {}).get("PortBindings") or {}).get(port_key) or []
+        auto_port_stopped = (
+            actual["status"] == "exited"
+            and actual["port"] is None
+            and len(bindings) == 1
+            and bindings[0].get("HostPort") == ""
+            and type(record.get("port")) is int
+            and 1 <= record["port"] <= 65535
+        )
+        if not auto_port_stopped and (
+            actual["port"] is None or str(actual["port"]) != str(record.get("port"))
+        ):
             differences.append("port")
 
         recorded_path = record.get("project_path")
