@@ -19,16 +19,14 @@ def main():
         if separator  and key.strip() == "DISCORD_BOT_TOKEN":
             token = value.strip().strip('"').strip("'")
             break
-    print(token)
     intents = discord.Intents.default()
     bot = DiscordBot(intents=intents)
-    bot.run(token)
 
     @bot.tree.command(name="show_project", description="顯示目前系統有哪些已偵測到的project(project想被偵測須將config放置在該系統資料夾的project_config中)")
     async def show_project(interaction: discord.Interaction) -> None:
         await time.sleep(10) #之後一併補上
 
-    @bot.tree.command(name="depoly", description="部屬/開啟指定網站")
+    @bot.tree.command(name="deploy", description="部屬/開啟指定網站")
     @app_commands.describe(path="指定config路徑")
     async def deploy(interaction: discord.Interaction, path:Path) -> None:
         await time.sleep(10) #之後一併補上
@@ -63,6 +61,7 @@ def main():
     async def remove(interaction: discord.Interaction, path) -> None:
         await time.sleep(10) #之後一併補上
 
+    bot.run(token)
 
 if __name__ == "__main__":
     main()
