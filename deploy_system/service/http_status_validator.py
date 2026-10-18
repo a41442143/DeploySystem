@@ -7,17 +7,39 @@ class http_validator:
         self.config = config
 
     def check_status(self, type):
-        port = self.config["port"]
-        if type == "html":
-            url = f"http://127.0.0.1:{port}/index.html"
-        elif type == "flask":
+        url = self._build_url(type, self.config["port"])
+        return self._check_url(url)
+
+    def check_multiple_status(self, instances):
+        if not isinstance(instances, dict) or not instances:
+            raise ValueError("多實例驗證需要非空的容器資訊")
+
+        urls = {}
+        for name, record in instances.items():
+            if not isinstance(record, dict) or "port" not in record:
+                raise ValueError(f"容器 {name} 缺少實際主機 Port")
+            urls[name] = self._build_url(self.config["type"], record["port"])
+
+        results = {}
+        for name, url in urls.items():
+            print(f"正在驗證 {name}：{url}")
+            results[name] = self._check_url(url)
+        return results
+
+    def _build_url(self, project_type, port):
+        if type(port) is not int or not 1 <= port <= 65535:
+            raise ValueError("主機 Port 應為 1 到 65535 的整數")
+        if project_type == "html":
+            return f"http://127.0.0.1:{port}/index.html"
+        elif project_type == "flask":
             check_point = self.config.get("check_point", "/")
             if not isinstance(check_point, str) or not check_point.startswith("/"):
                 raise ValueError("check_point 應為以 / 開頭的路徑")
-            url = f"http://127.0.0.1:{port}{check_point}"
+            return f"http://127.0.0.1:{port}{check_point}"
         else:
-            raise ValueError(f"不支援的專案類型：{type}")
+            raise ValueError(f"不支援的專案類型：{project_type}")
 
+    def _check_url(self, url):
         try:
             with urlopen(url, timeout=10) as response:
                 status = response.status

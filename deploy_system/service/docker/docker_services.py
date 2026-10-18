@@ -86,6 +86,68 @@ class docker_services:
         return image_tag
 
 
+    def docker_multiple_run(self, names):
+        report = self.check_record()
+        results = {}
+        image_tag = None
+        for name in names:
+            if name in report:
+                print(f"容器資訊檢查完畢，你要部屬的容器當前狀態為:{report[name]}")
+                if not isinstance(report[name], dict):
+                    print(f"容器紀錄檢查未通過，無法啟動：{report[name]}")
+                    return None
+                print("該容器已存在，所以改為使用start指令")
+                start_error = self.docker_start(name)
+                if start_error is not None:
+                    print(f"啟動既有容器失敗：{start_error}")
+                    return None
+                record = self.record_store.load()[name]
+                detail = self.dockerClient.inspect(record["id"])
+                actual = self.handle_detail(detail)
+                if record["port"] != actual["port"]:
+                    self.record_store.update_fields(name, {"port": actual["port"]})
+                results[name] = actual
+                continue
+
+            print("report中尚不存在該容器，即將建立並部屬該容器")
+            if self.type == "html":
+                try:
+                    self.check_project_dir()
+                    args = ["docker", "run", "-d", "--name", name,
+                            "--label", "deploysystem.owner=DeploySystem",
+                            "--publish", "127.0.0.1::80",
+                            "--mount",
+                            f"type=bind,source={self.project_path.resolve()},target=/usr/share/nginx/html,readonly",
+                            "nginx:alpine"]
+                    result = self.dockerClient._run(args)
+                except Exception as error:
+                    print(f"HTML 容器部署失敗：{error}")
+                    return None
+            elif self.type == "flask":
+                try:
+                    if image_tag is None:
+                        image_tag = self.docker_build()
+                    container_port = self.config.get("container_port", 8000)
+                    args = [
+                        "docker", "run", "-d", "--name", name,
+                        "--label", "deploysystem.owner=DeploySystem",
+                        "--label", f"deploysystem.project_path={self.project_path.resolve()}",
+                        "--publish", f"127.0.0.1::{container_port}",
+                        image_tag,
+                    ]
+                    result = self.dockerClient._run(args)
+                except Exception as error:
+                    print(f"Flask 容器建置或啟動失敗：{error}")
+                    return None
+            else:
+                raise ValueError(f"不支援的專案類型：{self.type}")
+
+            detail = self.dockerClient.inspect(result.strip())
+            actual = self.handle_detail(detail)
+            self.record_store.add_fields(name, actual)
+            results[name] = actual
+        return results
+
     def docker_run(self,name,port,label=None):
         report = self.check_record()
         if name in report.keys():

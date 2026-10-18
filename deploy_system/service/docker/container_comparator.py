@@ -20,15 +20,18 @@ class ContainerComparator:
         actual_id = detail.get("Id")
         actual_label = labels.get(self.LABEL_KEY)
         actual_status = (detail.get("State") or {}).get("Status")
-        bindings = (
-            (detail.get("HostConfig") or {}).get("PortBindings") or {}
-        ).get(f"{container_port}/tcp") or []
-
+        port_key = f"{container_port}/tcp"
         actual_port = None
-        if len(bindings) == 1:
-            host_port = bindings[0].get("HostPort")
-            if host_port is not None and str(host_port).isdigit():
-                actual_port = int(host_port)
+        # 優先讀取 Docker 實際分配的主機 Port；停止的容器可能只保留綁定設定。
+        for bindings in (
+            ((detail.get("NetworkSettings") or {}).get("Ports") or {}).get(port_key) or [],
+            ((detail.get("HostConfig") or {}).get("PortBindings") or {}).get(port_key) or [],
+        ):
+            if len(bindings) == 1:
+                host_port = bindings[0].get("HostPort")
+                if host_port is not None and str(host_port).isdigit():
+                    actual_port = int(host_port)
+                    break
 
         if project_type == "html":
             site_mounts = [

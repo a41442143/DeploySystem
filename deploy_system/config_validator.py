@@ -1,6 +1,7 @@
 from pathlib import Path
 class config_validator:
-    def __init__(self , config , config_parent_path):
+    def __init__(self , config , config_parent_path,multiple):
+        self.multiple = multiple
         self.config = config
         self.validate()
         self.validate_name()
@@ -12,7 +13,10 @@ class config_validator:
     def validate(self):
         if not self.config:
             raise ValueError("config is empty , and it should not be empty")
-        required_datas = ["name","type","path","port"]
+        if self.multiple == False:
+            required_datas = ["name","type","path","port"]
+        else:
+            required_datas = ["name","type","path"]
         for required_data in required_datas:
             if required_data not in self.config.keys():
                 raise ValueError(f'{required_data} 該欄位為必填')
@@ -20,11 +24,12 @@ class config_validator:
                 raise ValueError(f'this field {required_data} should not be empty')
     
     def validate_port(self):
-        if isinstance(self.config["port"],int):
-            if self.config["port"] > 65535 or self.config["port"] < 1:
-                raise ValueError("選取的port範圍不合法")
-        else:
-            raise TypeError("port應為數字")
+        if self.multiple == False:    
+            if isinstance(self.config["port"],int):
+                if self.config["port"] > 65535 or self.config["port"] < 1:
+                    raise ValueError("選取的port範圍不合法")
+            else:
+                raise TypeError("port應為數字")
     
     def validate_name(self):
         if not isinstance(self.config["name"] , str):

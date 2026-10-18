@@ -5,6 +5,7 @@ from .process_runner import process_runner
 from pathlib import Path
 from .config import Config
 from .service.http_status_validator import http_validator
+from .service.multiple_service import multiple_service
 import time
 class cli_parser:
     def __init__(self):
@@ -24,7 +25,8 @@ class cli_parser:
 
         for command in ("deploy", "test", "logs", "stop", "remove", "status", "start"):
             self.subparsers.add_parser(command, parents=[common])
-
+        multiple_parser = self.subparsers.add_parser("multiple-deploy", parents=[common])
+        multiple_parser.add_argument("count", type=int, help="要部署的實例數量")
 
 
 
@@ -40,7 +42,10 @@ def main(argv=None) -> int:
     parser = cli_parser()
     args = parser.parse(argv)
     try:
-        config = Config(args.config_path).config
+        if args.command !="multiple-deploy":
+            config = Config(args.config_path).config
+        else:
+            config = Config(args.config_path,True).config
         parser.set_config(config)
         service = parser.docker_sevice
         if args.command == "test":
@@ -75,6 +80,18 @@ def main(argv=None) -> int:
             if isinstance(result, str):
                 print(result)
                 return 1
+        elif args.command == "multiple-deploy":
+            if args.count < 1:
+                raise ValueError("實例數量不應小於1")
+            deployment = multiple_service(config, args.count, service)
+            instances = deployment.generate_instances()
+            if not instances:
+                print("多實例部署失敗")
+                return 1
+            checks = parser.http_validator.check_multiple_status(instances)
+            for name, record in instances.items():
+                print(f"{name}：http://127.0.0.1:{record['port']}/")
+            return 0 if all(status == 0 for status in checks.values()) else 1
     except (OSError, ValueError, TypeError, RuntimeError, KeyError) as error:
         print(f"操作失敗：{error}")
         return 1
