@@ -27,6 +27,7 @@ class cli_parser:
             self.subparsers.add_parser(command, parents=[common])
         multiple_parser = self.subparsers.add_parser("multiple-deploy", parents=[common])
         multiple_parser.add_argument("count", type=int, help="要部署的實例數量")
+        self.subparsers.add_parser("multiple-remove", parents=[common])
 
 
 
@@ -42,7 +43,7 @@ def main(argv=None) -> int:
     parser = cli_parser()
     args = parser.parse(argv)
     try:
-        if args.command !="multiple-deploy":
+        if args.command not in {"multiple-deploy", "multiple-remove"}:
             config = Config(args.config_path).config
         else:
             config = Config(args.config_path,True).config
@@ -83,7 +84,7 @@ def main(argv=None) -> int:
         elif args.command == "multiple-deploy":
             if args.count < 1:
                 raise ValueError("實例數量不應小於1")
-            deployment = multiple_service(config, args.count, service)
+            deployment = multiple_service(config, service, args.count)
             instances = deployment.generate_instances()
             if not instances:
                 print("多實例部署失敗")
@@ -91,7 +92,21 @@ def main(argv=None) -> int:
             checks = parser.http_validator.check_multiple_status(instances)
             for name, record in instances.items():
                 print(f"{name}：http://127.0.0.1:{record['port']}/")
-            return 0 if all(status == 0 for status in checks.values()) else 1
+            for status in checks.values():
+                if status != 0:
+                    return 1
+            return 0
+        elif args.command == "multiple-remove":
+            deployment = multiple_service(config, service)
+            results = deployment.remove_instances()
+            failed = False
+            for name, error in results.items():
+                if error is not None:
+                    print(f"{name} 刪除失敗：{error}")
+                    failed = True
+            if failed:
+                return 1
+            return 0
     except (OSError, ValueError, TypeError, RuntimeError, KeyError) as error:
         print(f"操作失敗：{error}")
         return 1
