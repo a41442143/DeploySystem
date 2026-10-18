@@ -10,3 +10,4 @@ examples/
 deploy_system/service/docker/server_record.json
 discord_bot.json
 dc/.env
+SMOKE_TEST_GUIDE.txt
